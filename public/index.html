@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPE Sync - Centralized Attendance & Event Tracking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .status-pending { @apply bg-yellow-100 text-yellow-800; }
+        .status-verified { @apply bg-green-100 text-green-800; }
+        .status-rejected { @apply bg-red-100 text-red-800; }
+        .status-ongoing { @apply bg-blue-100 text-blue-800; }
+        .status-upcoming { @apply bg-purple-100 text-purple-800; }
+        .status-ended { @apply bg-gray-100 text-gray-800; }
+        .notification { animation: slideInRight 0.3s ease-out; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .modal { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .theme-dark { @apply bg-gray-900 text-white; }
+        .theme-dark .card-bg { @apply bg-gray-800; }
+        .theme-dark .input-bg { @apply bg-gray-700 border-gray-600 text-white; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen transition-colors duration-300" id="body">
+    <!-- Navigation -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-white text-2xl mr-3"></i>
+                    <h1 class="text-white text-xl font-bold">CPE Sync</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="themeToggle" class="text-white hover:text-gray-200 p-2 rounded-md">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                    <div id="userMenu" class="hidden">
+                        <span class="text-white text-sm mr-4" id="userWelcome"></span>
+                        <button id="logoutBtn" class="bg-white bg-opacity-20 text-white px-4 py-2 rounded-md hover:bg-opacity-30 transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </button>
+                    </div>
+                    <div id="authButtons" class="space-x-2">
+                        <button id="loginBtn" class="bg-white bg-opacity-20 text-white px-4 py-2 rounded-md hover:bg-opacity-30 transition-colors">
+                            Login
+                        </button>
+                        <button id="registerBtn" class="bg-white text-purple-600 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors">
+                            Register
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Notifications -->
+    <div id="notifications" class="fixed top-20 right-4 z-50 space-y-2"></div>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Landing Page -->
+        <div id="landingPage" class="text-center">
+            <div class="gradient-bg rounded-3xl p-12 text-white card-shadow mb-8">
+                <h2 class="text-4xl font-bold mb-4">Welcome to CPE Sync</h2>
+                <p class="text-xl mb-8 opacity-90">Centralized Attendance & Event Tracking System for Computer Engineering Students</p>
+                <div class="grid md:grid-cols-3 gap-8 mt-12">
+                    <div class="text-center">
+                        <i class="fas fa-calendar-check text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Event Management</h3>
+                        <p class="opacity-80">Track and manage all CPE events in one place</p>
+                    </div>
+                    <div class="text-center">
+                        <i class="fas fa-qrcode text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Easy Attendance</h3>
+                        <p class="opacity-80">Submit attendance with codes and photo proof</p>
+                    </div>
+                    <div class="text-center">
+                        <i class="fas fa-chart-line text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Real-time Updates</h3>
+                        <p class="opacity-80">Instant updates across all devices</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Dashboard -->
+        <div id="studentDashboard" class="hidden">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">Student Dashboard</h2>
+                <p class="text-gray-600">View events and submit attendance</p>
+            </div>
+
+            <!-- Student Stats -->
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg card-shadow">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <i class="fas fa-calendar text-blue-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Total Events</p>
+                            <p class="text-2xl font-bold" id="studentTotalEvents">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg card-shadow">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-lg">
+                            <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Verified</p>
+                            <p class="text-2xl font-bold" id="studentVerified">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg card-shadow">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-100 rounded-lg">
+                            <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Pending</p>
+                            <p class="text-2xl font-bold" id="studentPending">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events List -->
+            <div class="bg-white rounded-lg card-shadow p-6">
+                <h3 class="text-xl font-semibold mb-4">Events</h3>
+                <div id="studentEventsList" class="space-y-4">
+                    <!-- Events will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Attendance History -->
+            <div class="bg-white rounded-lg card-shadow p-6 mt-8">
+                <h3 class="text-xl font-semibold mb-4">My Attendance History</h3>
+                <div id="attendanceHistory" class="space-y-4">
+                    <!-- History will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard -->
+        <div id="adminDashboard" class="hidden">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+                <p class="text-gray-600">Manage events, students, and attendance</p>
+            </div>
+
+            <!-- Admin Stats -->
+            <div class="grid md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg card-shadow">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Total Students</p>
+                            <p class="text-2xl font-bold" id="totalStudents">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg card-shadow">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-lg">
+                            <i class="fas fa-calendar text-green-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Total Events</p>
+                            <p class="text-2xl font-bold" id="totalEvents">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg card-shadow">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-100 rounded-lg">
+                            <i class="fas fa-exclamation-circle text-yellow-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Pending Verifications</p>
+                            <p class="text-2xl font-bold" id="pendingVerifications">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg card-shadow">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-purple-100 rounded-lg">
+                            <i class="fas fa-check-double text-purple-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Verified Today</p>
+                            <p class="text-2xl font-bold" id="verifiedToday">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Tabs -->
+            <div class="mb-6">
+                <nav class="flex space-x-8">
+                    <button class="admin-tab active border-b-2 border-purple-500 py-2 px-1 text-purple-600 font-medium" data-tab="events">
+                        <i class="fas fa-calendar mr-2"></i>Events
+                    </button>
+                    <button class="admin-tab border-b-2 border-transparent py-2 px-1 text-gray-500 hover:text-gray-700" data-tab="attendance">
+                        <i class="fas fa-clipboard-check mr-2"></i>Attendance
+                    </button>
+                    <button class="admin-tab border-b-2 border-transparent py-2 px-1 text-gray-500 hover:text-gray-700" data-tab="students">
+                        <i class="fas fa-users mr-2"></i>Students
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Events Tab -->
+            <div id="eventsTab" class="admin-tab-content">
+                <div class="bg-white rounded-lg card-shadow p-6 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Create New Event</h3>
+                        <button id="toggleCreateEvent" class="btn-primary text-white px-4 py-2 rounded-md">
+                            <i class="fas fa-plus mr-2"></i>New Event
+                        </button>
+                    </div>
+                    <form id="createEventForm" class="hidden grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Event Title *</label>
+                            <input type="text" id="eventTitle" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date & Time *</label>
+                            <input type="datetime-local" id="eventDateTime" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                            <textarea id="eventDescription" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Attendance Code</label>
+                            <input type="text" id="eventCode" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" placeholder="Leave empty to auto-generate">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="btn-primary text-white px-6 py-3 rounded-md w-full">
+                                <i class="fas fa-save mr-2"></i>Create Event
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <h3 class="text-xl font-semibold mb-4">All Events</h3>
+                    <div id="adminEventsList" class="space-y-4">
+                        <!-- Events will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Tab -->
+            <div id="attendanceTab" class="admin-tab-content hidden">
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <h3 class="text-xl font-semibold mb-4">Attendance Verifications</h3>
+                    <div id="attendanceVerifications" class="space-y-4">
+                        <!-- Attendance records will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students Tab -->
+            <div id="studentsTab" class="admin-tab-content hidden">
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <h3 class="text-xl font-semibold mb-4">Registered Students</h3>
+                    <div id="studentsList" class="space-y-4">
+                        <!-- Students will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 modal">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Login</h3>
+                <button id="closeLoginModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <div class="flex space-x-2">
+                    <button id="studentLoginTab" class="flex-1 py-2 px-4 bg-purple-100 text-purple-700 rounded-md font-medium">Student</button>
+                    <button id="adminLoginTab" class="flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-md font-medium">Admin</button>
+                </div>
+            </div>
+
+            <!-- Student Login Form -->
+            <form id="studentLoginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ID Number</label>
+                    <input type="text" id="loginIdNumber" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="loginPassword" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <button type="submit" class="w-full btn-primary text-white py-3 rounded-md font-medium">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login as Student
+                </button>
+            </form>
+
+            <!-- Admin Login Form -->
+            <form id="adminLoginForm" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Admin Code</label>
+                    <input type="password" id="adminCode" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" placeholder="CPE-SYNC-ADMIN-2025" required>
+                </div>
+                <button type="submit" class="w-full btn-primary text-white py-3 rounded-md font-medium">
+                    <i class="fas fa-shield-alt mr-2"></i>Login as Admin
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 modal">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Register</h3>
+                <button id="closeRegisterModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="registerFullName" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ID Number</label>
+                    <input type="text" id="registerIdNumber" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" placeholder="e.g., 2024-001234" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="registerPassword" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                    <input type="password" id="confirmPassword" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <button type="submit" class="w-full btn-primary text-white py-3 rounded-md font-medium">
+                    <i class="fas fa-user-plus mr-2"></i>Register
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Attendance Submission Modal -->
+    <div id="attendanceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 modal">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Submit Attendance</h3>
+                <button id="closeAttendanceModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="attendanceForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Event</label>
+                    <p id="attendanceEventTitle" class="text-lg font-medium text-gray-900 p-3 bg-gray-50 rounded-md"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Attendance Code *</label>
+                    <input type="text" id="attendanceCode" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 uppercase" placeholder="Enter code provided by instructor" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Proof Photo *</label>
+                    <input type="file" id="proofPhoto" accept="image/*" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Caption (Optional)</label>
+                    <textarea id="photoCaption" rows="2" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500" placeholder="Add a caption for your photo..."></textarea>
+                </div>
+                <button type="submit" class="w-full btn-primary text-white py-3 rounded-md font-medium">
+                    <i class="fas fa-check mr-2"></i>Submit Attendance
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Photo View Modal -->
+    <div id="photoModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
+        <div class="max-w-4xl w-full mx-4">
+            <div class="bg-white rounded-lg overflow-hidden">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 class="text-lg font-semibold">Proof Photo</h3>
+                    <button id="closePhotoModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <img id="photoModalImage" src="" alt="Proof photo" class="w-full h-auto max-h-96 object-contain mx-auto">
+                    <p id="photoModalCaption" class="mt-2 text-gray-600 text-center"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Global variables
+        let currentUser = null;
+        let socket = null;
+        let isDarkMode = false;
+        let currentEventForAttendance = null;
+
+        // Initialize Socket.IO
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                if (currentUser) {
+                    if (currentUser.role === 'admin') {
+                        socket.emit('joinAdmin');
+                    } else {
+                        socket.emit('joinStudent', currentUser.id);
+                    }
+                }
+            });
+
+            // Real-time event updates
+            socket.on('eventCreated', (event) => {
+                showNotification('New event created: ' + event.title, 'success');
+                if (currentUser && currentUser.role === 'student') {
+                    loadStudentEvents();
+                }
+                if (currentUser && currentUser.role === 'admin') {
+                    loadAdminEvents();
+                }
+            });
+
+            // Real-time attendance updates
+            socket.on('attendanceSubmitted', (data) => {
+                if (currentUser && currentUser.role === 'admin') {
+                    showNotification(`New attendance submission for ${data.eventTitle}`, 'info');
+                    loadAdminStats();
+                    if (document.getElementById('attendanceTab').classList.contains('admin-tab-content') && 
+                        !document.getElementById('attendanceTab').classList.contains('hidden')) {
+                        loadAttendanceVerifications();
+                    }
+                }
+            });
+
+            // Real-time status updates
+            socket.on('attendanceStatusUpdated', (data) => {
+                if (currentUser && currentUser.role === 'student') {
+                    loadAttendanceHistory();
+                    loadStudentStats();
+                }
+                if (currentUser && currentUser.role === 'admin') {
+                    loadAdminStats();
+                }
+            });
+        }
+
+        // Utility functions
+        function showNotification(message, type = 'info') {
+            const notifications = document.getElementById('notifications');
+            const notification = document.createElement('div');
+            
+            let bgColor, icon;
+            switch(type) {
+                case 'success': bgColor = 'bg-green-500'; icon = 'check-circle'; break;
+                case 'error': bgColor = 'bg-red-500'; icon = 'exclamation-circle'; break;
+                case 'warning': bgColor = 'bg-yellow-500'; icon = 'exclamation-triangle'; break;
+                default: bgColor = 'bg-blue-500'; icon = 'info-circle';
+            }
+            
+            notification.className = `notification ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center max-w-sm`;
+            notification.innerHTML = `
+                <i class="fas fa-${icon} mr-3"></i>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            notifications.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                pending: '<span class="status-pending px-2 py-1 text-xs font-medium rounded-full">Pending</span>',
+                verified: '<span class="status-verified px-2 py-1 text-xs font-medium rounded-full">Verified</span>',
+                rejected: '<span class="status-rejected px-2 py-1 text-xs font-medium rounded-full">Rejected</span>',
+                ongoing: '<span class="status-ongoing px-2 py-1 text-xs font-medium rounded-full">Ongoing</span>',
+                upcoming: '<span class="status-upcoming px-2 py-1 text-xs font-medium rounded-full">Upcoming</span>',
+                ended: '<span class="status-ended px-2 py-1 text-xs font-medium rounded-full">Ended</span>'
+            };
+            return badges[status] || status;
+        }
+
+        // API functions
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(endpoint, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Request failed');
+                }
+                
+                return await response.json();
+            } catch (error) {
+                showNotification(error.message, 'error');
+                throw error;
+            }
+        }
+
+        // Theme functions
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            const body = document.getElementById('body');
+            const themeIcon = document.getElementById('themeIcon');
+            
+            if (isDarkMode) {
+                body.classList.add('theme-dark');
+                themeIcon.className = 'fas fa-sun';
+            } else {
+                body.classList.remove('theme-dark');
+                themeIcon.className = 'fas fa-moon';
+            }
+            
+            localStorage.setItem('darkMode', isDarkMode);
+        }
+
+        // Authentication functions
+        async function login(isAdmin = false) {
+            try {
+                let response;
+                if (isAdmin) {
+                    const adminCode = document.getElementById('adminCode').value;
+                    response = await apiCall('/api/admin-login', {
+                        method: 'POST',
+                        body: JSON.stringify({ adminCode })
+                    });
+                } else {
+                    const idNumber = document.getElementById('loginIdNumber').value;
+                    const password = document.getElementById('loginPassword').value;
+                    response = await apiCall('/api/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ idNumber, password })
+                    });
+                }
+                
+                currentUser = response.user;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                closeModal('loginModal');
+                showNotification('Login successful!', 'success');
+                updateUI();
+                
+                // Rejoin socket rooms
+                if (socket) {
+                    if (currentUser.role === 'admin') {
+                        socket.emit('joinAdmin');
+                    } else {
+                        socket.emit('joinStudent', currentUser.id);
+                    }
+                }
+                
+            } catch (error) {
+                // Error already shown in apiCall
+            }
+        }
+
+        async function register() {
+            try {
+                const fullName = document.getElementById('registerFullName').value;
+                const idNumber = document.getElementById('registerIdNumber').value;
+                const password = document.getElementById('registerPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                
+                if (password !== confirmPassword) {
+                    showNotification('Passwords do not match', 'error');
+                    return;
+                }
+                
+                await apiCall('/api/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ fullName, idNumber, password })
+                });
+                
+                closeModal('registerModal');
+                showNotification('Registration successful! Please login.', 'success');
+                
+            } catch (error) {
+                // Error already shown in apiCall
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            updateUI();
+            showNotification('Logged out successfully', 'success');
+        }
+
+        // Modal functions
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // UI update functions
+        function updateUI() {
+            const authButtons = document.getElementById('authButtons');
+            const userMenu = document.getElementById('userMenu');
+            const userWelcome = document.getElementById('userWelcome');
+            const landingPage = document.getElementById('landingPage');
+            const studentDashboard = document.getElementById('studentDashboard');
+            const adminDashboard = document.getElementById('adminDashboard');
+            
+            if (currentUser) {
+                authButtons.classList.add('hidden');
+                userMenu.classList.remove('hidden');
+                userWelcome.textContent = `Welcome, ${currentUser.fullName}`;
+                landingPage.classList.add('hidden');
+                
+                if (currentUser.role === 'student') {
+                    studentDashboard.classList.remove('hidden');
+                    adminDashboard.classList.add('hidden');
+                    loadStudentData();
+                } else {
+                    adminDashboard.classList.remove('hidden');
+                    studentDashboard.classList.add('hidden');
+                    loadAdminData();
+                }
+            } else {
+                authButtons.classList.remove('hidden');
+                userMenu.classList.add('hidden');
+                landingPage.classList.remove('hidden');
+                studentDashboard.classList.add('hidden');
+                adminDashboard.classList.add('hidden');
+            }
+        }
+
+        // Student functions
+        async function loadStudentData() {
+            await Promise.all([
+                loadStudentEvents(),
+                loadAttendanceHistory(),
+                loadStudentStats()
+            ]);
+        }
+
+        async function loadStudentEvents() {
+            try {
+                const events = await apiCall('/api/events');
+                const container = document.getElementById('studentEventsList');
+                
+                if (events.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No events available</p>';
+                    return;
+                }
+                
+                container.innerHTML = events.map(event => `
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="text-lg font-semibold text-gray-900">${event.title}</h4>
+                            ${getStatusBadge(event.status)}
+                        </div>
+                        <p class="text-gray-600 mb-2">${event.description || 'No description'}</p>
+                        <p class="text-sm text-gray-500 mb-3">
+                            <i class="fas fa-calendar mr-2"></i>${formatDate(event.dateTime)}
+                        </p>
+                        ${event.status === 'ongoing' || event.status === 'upcoming' ? `
+                            <button onclick="openAttendanceModal('${event.id}', '${event.title}')" 
+                                    class="btn-primary text-white px-4 py-2 rounded-md text-sm">
+                                <i class="fas fa-qr-code mr-2"></i>Submit Attendance
+                            </button>
+                        ` : ''}
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                document.getElementById('studentEventsList').innerHTML = 
+                    '<p class="text-red-500 text-center py-8">Failed to load events</p>';
+            }
+        }
+
+        async function loadAttendanceHistory() {
+            try {
+                const history = await apiCall(`/api/attendance/student/${currentUser.id}`);
+                const container = document.getElementById('attendanceHistory');
+                
+                if (history.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No attendance records</p>';
+                    return;
+                }
+                
+                container.innerHTML = history.map(record => `
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="text-lg font-semibold text-gray-900">${record.eventTitle}</h4>
+                            ${getStatusBadge(record.status)}
+                        </div>
+                        <p class="text-sm text-gray-500 mb-2">
+                            <i class="fas fa-clock mr-2"></i>Submitted: ${formatDate(record.submittedAt)}
+                        </p>
+                        ${record.verifiedAt ? `
+                            <p class="text-sm text-gray-500 mb-2">
+                                <i class="fas fa-check mr-2"></i>Verified: ${formatDate(record.verifiedAt)}
+                            </p>
+                        ` : ''}
+                        ${record.proofImage ? `
+                            <button onclick="viewPhoto('${record.proofImage}', '${record.caption || ''}')" 
+                                    class="text-purple-600 hover:text-purple-800 text-sm">
+                                <i class="fas fa-image mr-2"></i>View Proof Photo
+                            </button>
+                        ` : ''}
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                document.getElementById('attendanceHistory').innerHTML = 
+                    '<p class="text-red-500 text-center py-8">Failed to load attendance history</p>';
+            }
+        }
+
+        async function loadStudentStats() {
+            try {
+                const [events, history] = await Promise.all([
+                    apiCall('/api/events'),
+                    apiCall(`/api/attendance/student/${currentUser.id}`)
+                ]);
+                
+                const verified = history.filter(r => r.status === 'verified').length;
+                const pending = history.filter(r => r.status === 'pending').length;
+                
+                document.getElementById('studentTotalEvents').textContent = events.length;
+                document.getElementById('studentVerified').textContent = verified;
+                document.getElementById('studentPending').textContent = pending;
+            } catch (error) {
+                console.error('Failed to load student stats:', error);
+            }
+        }
+
+        function openAttendanceModal(eventId, eventTitle) {
+            currentEventForAttendance = eventId;
+            document.getElementById('attendanceEventTitle').textContent = eventTitle;
+            document.getElementById('attendanceForm').reset();
+            openModal('attendanceModal');
+        }
+
+        async function submitAttendance() {
+            try {
+                const formData = new FormData();
+                formData.append('eventId', currentEventForAttendance);
+                formData.append('studentId', currentUser.id);
+                formData.append('attendanceCode', document.getElementById('attendanceCode').value.toUpperCase());
+                formData.append('caption', document.getElementById('photoCaption').value);
+                
+                const photoFile = document.getElementById('proofPhoto').files[0];
+                if (photoFile) {
+                    formData.append('proofImage', photoFile);
+                }
+                
+                await fetch('/api/attendance', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                closeModal('attendanceModal');
+                showNotification('Attendance submitted successfully!', 'success');
+                loadAttendanceHistory();
+                loadStudentStats();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // Admin functions
+        async function loadAdminData() {
+            await Promise.all([
+                loadAdminStats(),
+                loadAdminEvents()
+            ]);
+        }
+
+        async function loadAdminStats() {
+            try {
+                const stats = await apiCall('/api/admin/stats');
+                document.getElementById('totalStudents').textContent = stats.totalStudents;
+                document.getElementById('totalEvents').textContent = stats.totalEvents;
+                document.getElementById('pendingVerifications').textContent = stats.pendingVerifications;
+                document.getElementById('verifiedToday').textContent = stats.verifiedToday;
+            } catch (error) {
+                console.error('Failed to load admin stats:', error);
+            }
+        }
+
+        async function loadAdminEvents() {
+            try {
+                const events = await apiCall('/api/admin/events');
+                const container = document.getElementById('adminEventsList');
+                
+                if (events.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No events created</p>';
+                    return;
+                }
+                
+                container.innerHTML = events.map(event => `
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="text-lg font-semibold text-gray-900">${event.title}</h4>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">${event.attendanceCode}</span>
+                                <button onclick="viewEventAttendance('${event.id}')" class="text-purple-600 hover:text-purple-800">
+                                    <i class="fas fa-users"></i>
+                                </button>
+                                <a href="/api/admin/export/${event.id}" class="text-green-600 hover:text-green-800">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-2">${event.description || 'No description'}</p>
+                        <p class="text-sm text-gray-500">
+                            <i class="fas fa-calendar mr-2"></i>${formatDate(event.dateTime)}
+                        </p>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                document.getElementById('adminEventsList').innerHTML = 
+                    '<p class="text-red-500 text-center py-8">Failed to load events</p>';
+            }
+        }
+
+        async function createEvent() {
+            try {
+                const title = document.getElementById('eventTitle').value;
+                const description = document.getElementById('eventDescription').value;
+                const dateTime = document.getElementById('eventDateTime').value;
+                const attendanceCode = document.getElementById('eventCode').value;
+                
+                await apiCall('/api/admin/events', {
+                    method: 'POST',
+                    body: JSON.stringify({ title, description, dateTime, attendanceCode })
+                });
+                
+                document.getElementById('createEventForm').reset();
+                document.getElementById('createEventForm').classList.add('hidden');
+                showNotification('Event created successfully!', 'success');
+                loadAdminEvents();
+                loadAdminStats();
+                
+            } catch (error) {
+                // Error already shown in apiCall
+            }
+        }
+
+        async function loadStudentsList() {
+            try {
+                const students = await apiCall('/api/admin/students');
+                const container = document.getElementById('studentsList');
+                
+                if (students.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No students registered</p>';
+                    return;
+                }
+                
+                container.innerHTML = students.map(student => `
+                    <div class="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900">${student.fullName}</h4>
+                            <p class="text-gray-600">ID: ${student.idNumber}</p>
+                            <p class="text-sm text-gray-500">Registered: ${formatDate(student.createdAt)}</p>
+                        </div>
+                        <button onclick="deleteStudent(${student.id}, '${student.fullName}')" 
+                                class="text-red-600 hover:text-red-800 p-2">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                document.getElementById('studentsList').innerHTML = 
+                    '<p class="text-red-500 text-center py-8">Failed to load students</p>';
+            }
+        }
+
+        async function loadAttendanceVerifications() {
+            try {
+                // Get all events first
+                const events = await apiCall('/api/admin/events');
+                const container = document.getElementById('attendanceVerifications');
+                
+                if (events.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No events available</p>';
+                    return;
+                }
+                
+                // Get attendance for all events
+                const attendancePromises = events.map(event => 
+                    apiCall(`/api/admin/attendance/${event.id}`).then(records => ({ event, records }))
+                );
+                
+                const allAttendance = await Promise.all(attendancePromises);
+                const pendingRecords = allAttendance.filter(({ records }) => 
+                    records.some(r => r.status === 'pending')
+                );
+                
+                if (pendingRecords.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No pending verifications</p>';
+                    return;
+                }
+                
+                container.innerHTML = pendingRecords.map(({ event, records }) => {
+                    const pending = records.filter(r => r.status === 'pending');
+                    if (pending.length === 0) return '';
+                    
+                    return `
+                        <div class="border border-gray-200 rounded-lg p-4 mb-4">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-3">${event.title}</h4>
+                            <div class="space-y-3">
+                                ${pending.map(record => `
+                                    <div class="border-l-4 border-yellow-400 pl-4 py-2">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium">${record.fullName} (${record.idNumber})</p>
+                                                <p class="text-sm text-gray-500">Submitted: ${formatDate(record.submittedAt)}</p>
+                                                ${record.caption ? `<p class="text-sm text-gray-600 mt-1">"${record.caption}"</p>` : ''}
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                ${record.proofImage ? `
+                                                    <button onclick="viewPhoto('${record.proofImage}', '${record.caption || ''}')" 
+                                                            class="text-purple-600 hover:text-purple-800 p-1">
+                                                        <i class="fas fa-image"></i>
+                                                    </button>
+                                                ` : ''}
+                                                <button onclick="updateAttendanceStatus(${record.id}, 'verified')" 
+                                                        class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">
+                                                    <i class="fas fa-check mr-1"></i>Verify
+                                                </button>
+                                                <button onclick="updateAttendanceStatus(${record.id}, 'rejected')" 
+                                                        class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                                    <i class="fas fa-times mr-1"></i>Reject
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).filter(html => html).join('');
+                
+            } catch (error) {
+                document.getElementById('attendanceVerifications').innerHTML = 
+                    '<p class="text-red-500 text-center py-8">Failed to load attendance verifications</p>';
+            }
+        }
+
+        async function updateAttendanceStatus(attendanceId, status) {
+            try {
+                await apiCall(`/api/admin/attendance/${attendanceId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status })
+                });
+                
+                showNotification(`Attendance ${status} successfully!`, 'success');
+                loadAttendanceVerifications();
+                loadAdminStats();
+                
+            } catch (error) {
+                // Error already shown in apiCall
+            }
+        }
+
+        async function deleteStudent(studentId, studentName) {
+            if (!confirm(`Are you sure you want to delete ${studentName}? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                await apiCall(`/api/admin/students/${studentId}`, {
+                    method: 'DELETE'
+                });
+                
+                showNotification(`${studentName} deleted successfully`, 'success');
+                loadStudentsList();
+                loadAdminStats();
+                
+            } catch (error) {
+                // Error already shown in apiCall
+            }
+        }
+
+        function viewPhoto(imageData, caption) {
+            document.getElementById('photoModalImage').src = imageData;
+            document.getElementById('photoModalCaption').textContent = caption || 'No caption';
+            openModal('photoModal');
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize
+            initSocket();
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('darkMode');
+            if (savedTheme === 'true') {
+                toggleTheme();
+            }
+            
+            // Load saved user
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+            }
+            
+            updateUI();
+            
+            // Theme toggle
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            
+            // Auth buttons
+            document.getElementById('loginBtn').addEventListener('click', () => openModal('loginModal'));
+            document.getElementById('registerBtn').addEventListener('click', () => openModal('registerModal'));
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Modal close buttons
+            document.getElementById('closeLoginModal').addEventListener('click', () => closeModal('loginModal'));
+            document.getElementById('closeRegisterModal').addEventListener('click', () => closeModal('registerModal'));
+            document.getElementById('closeAttendanceModal').addEventListener('click', () => closeModal('attendanceModal'));
+            document.getElementById('closePhotoModal').addEventListener('click', () => closeModal('photoModal'));
+            
+            // Login tabs
+            document.getElementById('studentLoginTab').addEventListener('click', function() {
+                this.classList.add('bg-purple-100', 'text-purple-700');
+                this.classList.remove('bg-gray-100', 'text-gray-700');
+                document.getElementById('adminLoginTab').classList.remove('bg-purple-100', 'text-purple-700');
+                document.getElementById('adminLoginTab').classList.add('bg-gray-100', 'text-gray-700');
+                document.getElementById('studentLoginForm').classList.remove('hidden');
+                document.getElementById('adminLoginForm').classList.add('hidden');
+            });
+            
+            document.getElementById('adminLoginTab').addEventListener('click', function() {
+                this.classList.add('bg-purple-100', 'text-purple-700');
+                this.classList.remove('bg-gray-100', 'text-gray-700');
+                document.getElementById('studentLoginTab').classList.remove('bg-purple-100', 'text-purple-700');
+                document.getElementById('studentLoginTab').classList.add('bg-gray-100', 'text-gray-700');
+                document.getElementById('adminLoginForm').classList.remove('hidden');
+                document.getElementById('studentLoginForm').classList.add('hidden');
+            });
+            
+            // Forms
+            document.getElementById('studentLoginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                login(false);
+            });
+            
+            document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                login(true);
+            });
+            
+            document.getElementById('registerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                register();
+            });
+            
+            document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitAttendance();
+            });
+            
+            // Admin event creation
+            document.getElementById('toggleCreateEvent').addEventListener('click', function() {
+                const form = document.getElementById('createEventForm');
+                form.classList.toggle('hidden');
+            });
+            
+            document.getElementById('createEventForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                createEvent();
+            });
+            
+            // Admin tabs
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.dataset.tab;
+                    
+                    // Update tab appearance
+                    document.querySelectorAll('.admin-tab').forEach(t => {
+                        t.classList.remove('border-purple-500', 'text-purple-600');
+                        t.classList.add('border-transparent', 'text-gray-500');
+                    });
+                    this.classList.add('border-purple-500', 'text-purple-600');
+                    this.classList.remove('border-transparent', 'text-gray-500');
+                    
+                    // Show/hide content
+                    document.querySelectorAll('.admin-tab-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    document.getElementById(tabName + 'Tab').classList.remove('hidden');
+                    
+                    // Load data for specific tabs
+                    if (tabName === 'attendance') {
+                        loadAttendanceVerifications();
+                    } else if (tabName === 'students') {
+                        loadStudentsList();
+                    }
+                });
+            });
+            
+            // Close modals on outside click
+            document.querySelectorAll('.fixed.inset-0').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.add('hidden');
+                        this.classList.remove('flex');
+                    }
+                });
+            });
+        });
+
+        // Make functions globally available
+        window.openAttendanceModal = openAttendanceModal;
+        window.viewPhoto = viewPhoto;
+        window.updateAttendanceStatus = updateAttendanceStatus;
+        window.deleteStudent = deleteStudent;
+        window.viewEventAttendance = function(eventId) {
+            // Switch to attendance tab and filter by event
+            document.querySelector('[data-tab="attendance"]').click();
+        };
+    </script>
+</body>
+</html>
