@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPE Sync - Centralized Attendance & Event Tracking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif']
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .notification {
+            animation: slideInFromTop 0.3s ease-out;
+        }
+        @keyframes slideInFromTop {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans">
+    <!-- Notification Container -->
+    <div id="notifications" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Dark Mode Toggle -->
+    <button id="darkModeToggle" class="fixed top-4 left-4 z-40 p-2 rounded-full glass-effect hover:bg-white/80 transition-all duration-200">
+        <i class="fas fa-moon text-gray-600"></i>
+    </button>
+
+    <!-- Main Container -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="glass-effect border-b border-white/20 sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-graduation-cap text-white text-lg"></i>
+                        </div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                            CPE Sync
+                        </h1>
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <nav class="hidden md:flex space-x-6">
+                        <button id="nav-home" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                            <i class="fas fa-home mr-2"></i>Home
+                        </button>
+                        <button id="nav-login" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                            <i class="fas fa-sign-in-alt mr-2"></i>Login
+                        </button>
+                        <button id="nav-register" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                            <i class="fas fa-user-plus mr-2"></i>Register
+                        </button>
+                        <button id="nav-logout" class="hidden text-red-600 hover:text-red-700 font-medium transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </button>
+                    </nav>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-white/20">
+                        <i class="fas fa-bars text-gray-700"></i>
+                    </button>
+                </div>
+
+                <!-- Mobile Navigation -->
+                <div id="mobile-menu" class="hidden md:hidden pb-4 space-y-2">
+                    <button class="mobile-nav-btn block w-full text-left px-4 py-2 text-gray-700 hover:bg-white/20 rounded-lg transition-colors" data-target="home">
+                        <i class="fas fa-home mr-2"></i>Home
+                    </button>
+                    <button class="mobile-nav-btn block w-full text-left px-4 py-2 text-gray-700 hover:bg-white/20 rounded-lg transition-colors" data-target="login">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Login
+                    </button>
+                    <button class="mobile-nav-btn block w-full text-left px-4 py-2 text-gray-700 hover:bg-white/20 rounded-lg transition-colors" data-target="register">
+                        <i class="fas fa-user-plus mr-2"></i>Register
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Home Page -->
+            <div id="page-home" class="space-y-8">
+                <div class="text-center">
+                    <h2 class="text-4xl font-bold text-gray-900 mb-4">Welcome to CPE Sync</h2>
+                    <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                        Centralized attendance and event tracking system for Computer Engineering students. 
+                        Stay updated with real-time event notifications and manage your attendance seamlessly.
+                    </p>
+                </div>
+
+                <!-- User Info Card (for logged in users) -->
+                <div id="user-info-card" class="hidden glass-effect rounded-2xl p-6 border border-white/20">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white"></i>
+                        </div>
+                        <div>
+                            <h3 id="user-name" class="text-lg font-semibold text-gray-900"></h3>
+                            <p id="user-id" class="text-gray-600"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events Section -->
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-2xl font-bold text-gray-900">
+                            <i class="fas fa-calendar-alt mr-3 text-blue-600"></i>
+                            Current & Upcoming Events
+                        </h3>
+                        <div class="flex items-center space-x-2 text-sm text-gray-500">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span>Live Updates</span>
+                        </div>
+                    </div>
+                    
+                    <div id="events-container" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        <!-- Events will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Attendance History (for students) -->
+                <div id="attendance-history-section" class="hidden space-y-6">
+                    <h3 class="text-2xl font-bold text-gray-900">
+                        <i class="fas fa-history mr-3 text-blue-600"></i>
+                        My Attendance History
+                    </h3>
+                    <div id="attendance-history" class="space-y-4">
+                        <!-- Attendance history will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login Page -->
+            <div id="page-login" class="hidden max-w-md mx-auto">
+                <div class="glass-effect rounded-2xl p-8 border border-white/20 slide-in">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-sign-in-alt text-white text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">Welcome Back</h2>
+                        <p class="text-gray-600 mt-2">Sign in to your account</p>
+                    </div>
+
+                    <!-- Login Type Selector -->
+                    <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
+                        <button id="student-login-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium bg-white text-blue-600 shadow-sm transition-all">
+                            Student
+                        </button>
+                        <button id="admin-login-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 transition-all">
+                            Admin
+                        </button>
+                    </div>
+
+                    <!-- Student Login Form -->
+                    <form id="student-login-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ID Number</label>
+                            <input type="text" id="student-id" required 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                   placeholder="Enter your ID number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                            <input type="password" id="student-password" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                   placeholder="Enter your password">
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all duration-200">
+                            Sign In
+                        </button>
+                    </form>
+
+                    <!-- Admin Login Form -->
+                    <form id="admin-login-form" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Admin Code</label>
+                            <input type="password" id="admin-code" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                   placeholder="Enter admin code">
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-red-500 to-pink-600 text-white py-3 rounded-lg font-medium hover:from-red-600 hover:to-pink-700 transition-all duration-200">
+                            Admin Sign In
+                        </button>
+                    </form>
+
+                    <div class="mt-6 text-center">
+                        <p class="text-gray-600">
+                            Don't have an account? 
+                            <button id="go-to-register" class="text-blue-600 hover:text-blue-700 font-medium">
+                                Register here
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Register Page -->
+            <div id="page-register" class="hidden max-w-md mx-auto">
+                <div class="glass-effect rounded-2xl p-8 border border-white/20 slide-in">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-user-plus text-white text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">Create Account</h2>
+                        <p class="text-gray-600 mt-2">Join CPE Sync today</p>
+                    </div>
+
+                    <form id="register-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                            <input type="text" id="register-name" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                   placeholder="Enter your full name">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ID Number</label>
+                            <input type="text" id="register-id" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                   placeholder="Enter your ID number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                            <input type="password" id="register-password" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                   placeholder="Create a password">
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200">
+                            Create Account
+                        </button>
+                    </form>
+
+                    <div class="mt-6 text-center">
+                        <p class="text-gray-600">
+                            Already have an account? 
+                            <button id="go-to-login" class="text-blue-600 hover:text-blue-700 font-medium">
+                                Sign in here
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="page-admin" class="hidden space-y-8">
+                <div class="text-center">
+                    <h2 class="text-4xl font-bold text-gray-900 mb-4">Admin Dashboard</h2>
+                    <p class="text-xl text-gray-600">Manage events, monitor attendance, and oversee student accounts</p>
+                </div>
+
+                <!-- Admin Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="glass-effect rounded-2xl p-6 border border-white/20">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-blue-100 rounded-full">
+                                <i class="fas fa-calendar text-blue-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Total Events</p>
+                                <p id="stat-events" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-effect rounded-2xl p-6 border border-white/20">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-green-100 rounded-full">
+                                <i class="fas fa-users text-green-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Registered Students</p>
+                                <p id="stat-students" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-effect rounded-2xl p-6 border border-white/20">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-yellow-100 rounded-full">
+                                <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Pending Verifications</p>
+                                <p id="stat-pending" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-effect rounded-2xl p-6 border border-white/20">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-purple-100 rounded-full">
+                                <i class="fas fa-check-circle text-purple-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Verified Attendance</p>
+                                <p id="stat-verified" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="flex flex-wrap gap-4">
+                    <button id="btn-create-event" class="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all">
+                        <i class="fas fa-plus mr-2"></i>Create Event
+                    </button>
+                    <button id="btn-manage-users" class="flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all">
+                        <i class="fas fa-users mr-2"></i>Manage Users
+                    </button>
+                    <button id="btn-attendance-overview" class="flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-700 transition-all">
+                        <i class="fas fa-chart-bar mr-2"></i>Attendance Overview
+                    </button>
+                </div>
+
+                <!-- Admin Sections -->
+                <div id="admin-content">
+                    <!-- Create Event Section -->
+                    <div id="create-event-section" class="hidden glass-effect rounded-2xl p-8 border border-white/20">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-6">
+                            <i class="fas fa-plus mr-3 text-blue-600"></i>Create New Event
+                        </h3>
+                        <form id="create-event-form" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Event Title</label>
+                                    <input type="text" id="event-title" required
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                                    <input type="datetime-local" id="event-datetime" required
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                <textarea id="event-description" required rows="4"
+                                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Attendance Code</label>
+                                <div class="flex space-x-2">
+                                    <input type="text" id="event-code" required
+                                           class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <button type="button" id="generate-code" class="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                                        <i class="fas fa-random"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex space-x-4">
+                                <button type="submit" class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all">
+                                    Create Event
+                                </button>
+                                <button type="button" id="cancel-create-event" class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Manage Users Section -->
+                    <div id="manage-users-section" class="hidden glass-effect rounded-2xl p-8 border border-white/20">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-6">
+                            <i class="fas fa-users mr-3 text-green-600"></i>Manage Student Accounts
+                        </h3>
+                        <div id="users-table" class="overflow-x-auto">
+                            <!-- Users table will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Attendance Overview Section -->
+                    <div id="attendance-overview-section" class="hidden">
+                        <div id="events-attendance" class="space-y-6">
+                            <!-- Events with attendance will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Attendance Modal -->
+    <div id="attendance-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="glass-effect rounded-2xl max-w-md w-full p-8 border border-white/20">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="attendance-modal-title" class="text-xl font-bold text-gray-900"></h3>
+                <button id="close-attendance-modal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="attendance-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Attendance Code</label>
+                    <input type="text" id="attendance-code" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Enter the attendance code">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Proof Photo <span class="text-red-500">*</span></label>
+                    <input type="file" id="proof-photo" accept="image/*" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Caption (Optional)</label>
+                    <textarea id="photo-caption" rows="2"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Add a caption to your photo"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all">
+                    Submit Attendance
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="max-w-4xl max-h-full">
+            <div class="relative">
+                <img id="modal-image" src="" alt="" class="max-w-full max-h-screen rounded-lg">
+                <button id="close-image-modal" class="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
