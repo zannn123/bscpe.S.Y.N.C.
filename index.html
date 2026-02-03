@@ -32,6 +32,9 @@
      <button class="hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded" id="nav-register">
       Register
      </button>
+     <button class="hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded" id="nav-admin">
+      Admin
+     </button>
      <button class="hidden hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded" id="nav-logout">
       Logout
      </button>
@@ -124,6 +127,31 @@
      <p class="mt-2 text-red-600 font-semibold hidden" id="register-error">
      </p>
     </section>
+    <!-- Admin Login Page -->
+    <section class="hidden max-w-md mx-auto bg-white p-6 rounded-md shadow-md" id="page-admin-login">
+     <h2 class="text-2xl font-semibold mb-4 text-indigo-700">
+      Admin Login
+     </h2>
+     <form autocomplete="off" class="space-y-4" id="admin-login-form" novalidate="">
+      <div>
+       <label class="block text-gray-700 font-medium mb-1" for="admin-username">
+        Admin Username
+       </label>
+       <input class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="admin-username" name="username" required="" type="text"/>
+      </div>
+      <div>
+       <label class="block text-gray-700 font-medium mb-1" for="admin-password">
+        Admin Password
+       </label>
+       <input class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="admin-password" name="password" required="" type="password"/>
+      </div>
+      <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" type="submit">
+       Login as Admin
+      </button>
+     </form>
+     <p class="mt-2 text-red-600 font-semibold hidden" id="admin-login-error">
+     </p>
+    </section>
     <!-- Event Check-in Modal -->
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50" id="checkin-modal">
      <div class="bg-white rounded-md max-w-md w-full p-6 relative shadow-lg">
@@ -135,6 +163,19 @@
       </h3>
       <form autocomplete="off" class="space-y-4" id="checkin-form" novalidate="">
        <div>
+        <label class="block text-gray-700 font-medium mb-1" for="checkin-action">
+         Attendance Action
+        </label>
+        <select class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="checkin-action" name="action" required="">
+         <option value="time-in">
+          Time In
+         </option>
+         <option value="time-out">
+          Time Out
+         </option>
+        </select>
+       </div>
+       <div>
         <label class="block text-gray-700 font-medium mb-1" for="checkin-code">
          Enter Attendance Code
         </label>
@@ -142,9 +183,9 @@
        </div>
        <div>
         <label class="block text-gray-700 font-medium mb-1" for="checkin-photo">
-         Upload Event Photo <span class="text-red-600">*</span>
+         Upload Event Photo <span class="text-red-600">(required for time in)</span>
         </label>
-        <input accept="image/*" class="w-full" id="checkin-photo" name="photo" required="" type="file"/>
+        <input accept="image/*" class="w-full" id="checkin-photo" name="photo" type="file"/>
        </div>
        <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" type="submit">
         Check In
@@ -230,6 +271,57 @@
       </div>
      </section>
     </section>
+    <!-- Admin Dashboard -->
+    <section class="hidden max-w-6xl mx-auto bg-white p-6 rounded-md shadow-md space-y-8" id="page-admin-dashboard">
+     <h2 class="text-2xl font-semibold text-indigo-700">
+      Admin Overview
+     </h2>
+     <section>
+      <h3 class="text-xl font-semibold mb-3 border-b border-indigo-300 pb-2">
+       Platform Summary
+      </h3>
+      <div class="grid gap-4 sm:grid-cols-3">
+       <div class="bg-indigo-50 border border-indigo-200 rounded-md p-4">
+        <p class="text-sm text-indigo-600 font-semibold">
+         Total Users
+        </p>
+        <p class="text-3xl font-bold text-indigo-700" id="admin-total-users">
+         0
+        </p>
+       </div>
+       <div class="bg-indigo-50 border border-indigo-200 rounded-md p-4">
+        <p class="text-sm text-indigo-600 font-semibold">
+         Total Events
+        </p>
+        <p class="text-3xl font-bold text-indigo-700" id="admin-total-events">
+         0
+        </p>
+       </div>
+       <div class="bg-indigo-50 border border-indigo-200 rounded-md p-4">
+        <p class="text-sm text-indigo-600 font-semibold">
+         Attendance Records
+        </p>
+        <p class="text-3xl font-bold text-indigo-700" id="admin-total-attendance">
+         0
+        </p>
+       </div>
+      </div>
+     </section>
+     <section>
+      <h3 class="text-xl font-semibold mb-3 border-b border-indigo-300 pb-2">
+       Attendance Audit Log
+      </h3>
+      <div class="space-y-6 overflow-x-auto" id="admin-attendance-logs">
+      </div>
+     </section>
+     <section>
+      <h3 class="text-xl font-semibold mb-3 border-b border-indigo-300 pb-2">
+       Registered Users
+      </h3>
+      <div class="overflow-x-auto" id="admin-users-table">
+      </div>
+     </section>
+    </section>
    </main>
    <!-- Footer -->
    <footer class="mt-12 py-6 text-center text-gray-500 text-sm select-none">
@@ -241,25 +333,32 @@
       // Constants
       const HOST_LOGIN_CODE = "HOST2024SYNC";
       const HOST_REGISTRATION_CODE = "HOST2024SYNC";
+      const ADMIN_USERNAME = "admin";
+      const ADMIN_PASSWORD = "SYNC2024!";
 
       // Elements
       const navHomeBtn = document.getElementById("nav-home");
       const navLoginBtn = document.getElementById("nav-login");
       const navRegisterBtn = document.getElementById("nav-register");
+      const navAdminBtn = document.getElementById("nav-admin");
       const navLogoutBtn = document.getElementById("nav-logout");
 
       const pageHome = document.getElementById("page-home");
       const pageLogin = document.getElementById("page-login");
       const pageRegister = document.getElementById("page-register");
+      const pageAdminLogin = document.getElementById("page-admin-login");
       const pageHostDashboard = document.getElementById("page-host-dashboard");
+      const pageAdminDashboard = document.getElementById("page-admin-dashboard");
 
       const loginForm = document.getElementById("login-form");
       const registerForm = document.getElementById("register-form");
+      const adminLoginForm = document.getElementById("admin-login-form");
       const createEventForm = document.getElementById("create-event-form");
       const announcementForm = document.getElementById("announcement-form");
 
       const loginError = document.getElementById("login-error");
       const registerError = document.getElementById("register-error");
+      const adminLoginError = document.getElementById("admin-login-error");
       const createEventError = document.getElementById("create-event-error");
       const createEventSuccess = document.getElementById("create-event-success");
       const announcementSuccess = document.getElementById("announcement-success");
@@ -277,15 +376,22 @@
       const checkinCloseBtn = document.getElementById("checkin-close");
       const checkinEventTitle = document.getElementById("checkin-event-title");
       const checkinForm = document.getElementById("checkin-form");
+      const checkinActionSelect = document.getElementById("checkin-action");
       const checkinCodeInput = document.getElementById("checkin-code");
       const checkinPhotoInput = document.getElementById("checkin-photo");
       const checkinError = document.getElementById("checkin-error");
       const checkinSuccess = document.getElementById("checkin-success");
 
       const announcementTextArea = document.getElementById("announcement-text");
+      const adminTotalUsers = document.getElementById("admin-total-users");
+      const adminTotalEvents = document.getElementById("admin-total-events");
+      const adminTotalAttendance = document.getElementById("admin-total-attendance");
+      const adminAttendanceLogs = document.getElementById("admin-attendance-logs");
+      const adminUsersTable = document.getElementById("admin-users-table");
 
       // State
       let currentUser = null; // {username, isHost}
+      let currentAdmin = null; // {username}
       let currentCheckinEventId = null;
 
       // Storage keys
@@ -294,6 +400,7 @@
       const STORAGE_ANNOUNCEMENT = "cpe_sync_announcement";
       const STORAGE_ATTENDANCE = "cpe_sync_attendance";
       const STORAGE_SESSION = "cpe_sync_session";
+      const STORAGE_ADMIN_SESSION = "cpe_sync_admin_session";
 
       // Utility Functions
       function saveToStorage(key, value) {
@@ -318,6 +425,18 @@
           dateStyle: "medium",
           timeStyle: "short",
         });
+      }
+
+      function formatDuration(startTime, endTime) {
+        if (!startTime || !endTime) return "—";
+        const diffMs = Math.max(0, endTime - startTime);
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        if (hours === 0) {
+          return `${minutes}m`;
+        }
+        return `${hours}h ${minutes}m`;
       }
 
       // User Management
@@ -379,6 +498,18 @@
         attendance.push(record);
         saveAttendance(attendance);
       }
+      function updateAttendanceRecord(updatedRecord) {
+        const attendance = getAttendance();
+        const idx = attendance.findIndex((a) => a.id === updatedRecord.id);
+        if (idx !== -1) {
+          attendance[idx] = updatedRecord;
+          saveAttendance(attendance);
+        }
+      }
+      function findAttendanceRecord(eventId, username) {
+        const attendance = getAttendance();
+        return attendance.find((a) => a.eventId === eventId && a.username === username);
+      }
       function getAttendanceByEvent(eventId) {
         const attendance = getAttendance();
         return attendance.filter((a) => a.eventId === eventId);
@@ -394,6 +525,15 @@
       function clearSession() {
         localStorage.removeItem(STORAGE_SESSION);
       }
+      function saveAdminSession(adminUser) {
+        saveToStorage(STORAGE_ADMIN_SESSION, adminUser);
+      }
+      function loadAdminSession() {
+        return loadFromStorage(STORAGE_ADMIN_SESSION);
+      }
+      function clearAdminSession() {
+        localStorage.removeItem(STORAGE_ADMIN_SESSION);
+      }
 
       // Announcement Management
       function getAnnouncement() {
@@ -405,22 +545,33 @@
 
       // UI Helpers
       function showPage(page) {
-        [pageHome, pageLogin, pageRegister, pageHostDashboard].forEach((p) => {
+        [pageHome, pageLogin, pageRegister, pageAdminLogin, pageHostDashboard, pageAdminDashboard].forEach((p) => {
           p.classList.add("hidden");
         });
         page.classList.remove("hidden");
       }
 
       function updateNav() {
+        if (currentAdmin) {
+          navLoginBtn.classList.add("hidden");
+          navRegisterBtn.classList.add("hidden");
+          navAdminBtn.classList.add("hidden");
+          navLogoutBtn.classList.remove("hidden");
+          navHomeBtn.classList.remove("hidden");
+          return;
+        }
+
         if (currentUser) {
           navLoginBtn.classList.add("hidden");
           navRegisterBtn.classList.add("hidden");
+          navAdminBtn.classList.add("hidden");
           navLogoutBtn.classList.remove("hidden");
           navHomeBtn.classList.remove("hidden");
         } else {
           navLoginBtn.classList.remove("hidden");
           navRegisterBtn.classList.remove("hidden");
           navLogoutBtn.classList.add("hidden");
+          navAdminBtn.classList.remove("hidden");
           navHomeBtn.classList.remove("hidden");
         }
       }
@@ -505,7 +656,9 @@
             thead.innerHTML = `
               <tr class="bg-indigo-100 text-indigo-700">
                 <th class="border border-indigo-300 px-3 py-1 text-left">Username</th>
-                <th class="border border-indigo-300 px-3 py-1 text-left">Check-in Time</th>
+                <th class="border border-indigo-300 px-3 py-1 text-left">Time In</th>
+                <th class="border border-indigo-300 px-3 py-1 text-left">Time Out</th>
+                <th class="border border-indigo-300 px-3 py-1 text-left">Duration</th>
                 <th class="border border-indigo-300 px-3 py-1 text-left">Photo</th>
               </tr>
             `;
@@ -523,7 +676,15 @@
 
               const timeTd = document.createElement("td");
               timeTd.className = "border border-indigo-300 px-3 py-1";
-              timeTd.textContent = formatDateTime(record.timestamp);
+              timeTd.textContent = record.timeIn ? formatDateTime(record.timeIn) : "—";
+
+              const timeOutTd = document.createElement("td");
+              timeOutTd.className = "border border-indigo-300 px-3 py-1";
+              timeOutTd.textContent = record.timeOut ? formatDateTime(record.timeOut) : "—";
+
+              const durationTd = document.createElement("td");
+              durationTd.className = "border border-indigo-300 px-3 py-1";
+              durationTd.textContent = formatDuration(record.timeIn, record.timeOut);
 
               const photoTd = document.createElement("td");
               photoTd.className = "border border-indigo-300 px-3 py-1";
@@ -541,6 +702,8 @@
 
               tr.appendChild(usernameTd);
               tr.appendChild(timeTd);
+              tr.appendChild(timeOutTd);
+              tr.appendChild(durationTd);
               tr.appendChild(photoTd);
 
               tbody.appendChild(tr);
@@ -553,6 +716,150 @@
 
           attendanceLogsContainer.appendChild(eventSection);
         });
+      }
+
+      function renderAdminSummary() {
+        const users = getUsers();
+        const events = getEvents();
+        const attendance = getAttendance();
+        adminTotalUsers.textContent = users.length.toString();
+        adminTotalEvents.textContent = events.length.toString();
+        adminTotalAttendance.textContent = attendance.length.toString();
+      }
+
+      function renderAdminAttendanceLogs() {
+        adminAttendanceLogs.innerHTML = "";
+        const events = getEvents();
+        if (events.length === 0) {
+          adminAttendanceLogs.innerHTML = `<p class="text-gray-600 italic">No events created yet.</p>`;
+          return;
+        }
+
+        events.forEach((event) => {
+          const eventSection = document.createElement("section");
+          eventSection.className = "border border-gray-300 rounded-md p-4 bg-gray-50";
+
+          const eventTitle = document.createElement("h4");
+          eventTitle.className = "text-lg font-semibold text-indigo-700 mb-3";
+          eventTitle.textContent = event.title;
+
+          const attendanceRecords = getAttendanceByEvent(event.id);
+
+          if (attendanceRecords.length === 0) {
+            const noRecords = document.createElement("p");
+            noRecords.className = "text-gray-600 italic";
+            noRecords.textContent = "No attendance records for this event.";
+            eventSection.appendChild(eventTitle);
+            eventSection.appendChild(noRecords);
+          } else {
+            const table = document.createElement("table");
+            table.className = "w-full border-collapse";
+
+            const thead = document.createElement("thead");
+            thead.innerHTML = `
+              <tr class="bg-indigo-100 text-indigo-700">
+                <th class="border border-indigo-300 px-3 py-1 text-left">Username</th>
+                <th class="border border-indigo-300 px-3 py-1 text-left">Time In</th>
+                <th class="border border-indigo-300 px-3 py-1 text-left">Time Out</th>
+                <th class="border border-indigo-300 px-3 py-1 text-left">Duration</th>
+                <th class="border border-indigo-300 px-3 py-1 text-left">Photo</th>
+              </tr>
+            `;
+            table.appendChild(thead);
+
+            const tbody = document.createElement("tbody");
+
+            attendanceRecords.forEach((record) => {
+              const tr = document.createElement("tr");
+              tr.className = "even:bg-white odd:bg-gray-100";
+
+              const usernameTd = document.createElement("td");
+              usernameTd.className = "border border-indigo-300 px-3 py-1";
+              usernameTd.textContent = record.username;
+
+              const timeTd = document.createElement("td");
+              timeTd.className = "border border-indigo-300 px-3 py-1";
+              timeTd.textContent = record.timeIn ? formatDateTime(record.timeIn) : "—";
+
+              const timeOutTd = document.createElement("td");
+              timeOutTd.className = "border border-indigo-300 px-3 py-1";
+              timeOutTd.textContent = record.timeOut ? formatDateTime(record.timeOut) : "—";
+
+              const durationTd = document.createElement("td");
+              durationTd.className = "border border-indigo-300 px-3 py-1";
+              durationTd.textContent = formatDuration(record.timeIn, record.timeOut);
+
+              const photoTd = document.createElement("td");
+              photoTd.className = "border border-indigo-300 px-3 py-1";
+
+              if (record.photoDataUrl) {
+                const img = document.createElement("img");
+                img.src = record.photoDataUrl;
+                img.alt = `Uploaded photo by ${record.username} for event ${event.title}`;
+                img.className = "h-16 w-16 object-cover rounded-md border border-gray-300";
+                photoTd.appendChild(img);
+              } else {
+                photoTd.textContent = "No photo";
+                photoTd.classList.add("italic", "text-gray-500");
+              }
+
+              tr.appendChild(usernameTd);
+              tr.appendChild(timeTd);
+              tr.appendChild(timeOutTd);
+              tr.appendChild(durationTd);
+              tr.appendChild(photoTd);
+
+              tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            eventSection.appendChild(eventTitle);
+            eventSection.appendChild(table);
+          }
+
+          adminAttendanceLogs.appendChild(eventSection);
+        });
+      }
+
+      function renderAdminUsers() {
+        const users = getUsers();
+        if (users.length === 0) {
+          adminUsersTable.innerHTML = `<p class="text-gray-600 italic">No registered users yet.</p>`;
+          return;
+        }
+
+        const table = document.createElement("table");
+        table.className = "w-full border-collapse";
+        table.innerHTML = `
+          <thead>
+            <tr class="bg-indigo-100 text-indigo-700">
+              <th class="border border-indigo-300 px-3 py-1 text-left">Username</th>
+              <th class="border border-indigo-300 px-3 py-1 text-left">Role</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector("tbody");
+        users.forEach((user) => {
+          const tr = document.createElement("tr");
+          tr.className = "even:bg-white odd:bg-gray-100";
+
+          const usernameTd = document.createElement("td");
+          usernameTd.className = "border border-indigo-300 px-3 py-1";
+          usernameTd.textContent = user.username;
+
+          const roleTd = document.createElement("td");
+          roleTd.className = "border border-indigo-300 px-3 py-1";
+          roleTd.textContent = user.isHost ? "Host" : "Attendee";
+
+          tr.appendChild(usernameTd);
+          tr.appendChild(roleTd);
+          tbody.appendChild(tr);
+        });
+
+        adminUsersTable.innerHTML = "";
+        adminUsersTable.appendChild(table);
       }
 
       // Render Host Events List with delete and show event code
@@ -600,6 +907,8 @@
               renderHostEventsList();
               renderAttendanceLogs();
               renderEventsList();
+              renderAdminSummary();
+              renderAdminAttendanceLogs();
             }
           });
 
@@ -625,6 +934,7 @@
 
         currentCheckinEventId = eventId;
         checkinEventTitle.textContent = event.title;
+        checkinActionSelect.value = "time-in";
         checkinCodeInput.value = "";
         checkinPhotoInput.value = "";
         checkinError.classList.add("hidden");
@@ -687,6 +997,8 @@
         }
 
         currentUser = { username: user.username, isHost: user.isHost };
+        currentAdmin = null;
+        clearAdminSession();
         saveSession(currentUser);
         loginForm.reset();
         loginError.classList.add("hidden");
@@ -737,13 +1049,17 @@
         registerForm.reset();
         registerError.classList.add("hidden");
         alert("Registration successful! You can now log in.");
+        renderAdminSummary();
+        renderAdminUsers();
         showPage(pageLogin);
       });
 
       // Logout Handler
       navLogoutBtn.addEventListener("click", () => {
         currentUser = null;
+        currentAdmin = null;
         clearSession();
+        clearAdminSession();
         updateNav();
         showAnnouncement();
         renderEventsList();
@@ -752,7 +1068,12 @@
 
       // Navigation Buttons
       navHomeBtn.addEventListener("click", () => {
-        if (currentUser && currentUser.isHost) {
+        if (currentAdmin) {
+          renderAdminSummary();
+          renderAdminAttendanceLogs();
+          renderAdminUsers();
+          showPage(pageAdminDashboard);
+        } else if (currentUser && currentUser.isHost) {
           announcementTextArea.value = getAnnouncement();
           renderAttendanceLogs();
           renderHostEventsList();
@@ -767,6 +1088,9 @@
       });
       navRegisterBtn.addEventListener("click", () => {
         showPage(pageRegister);
+      });
+      navAdminBtn.addEventListener("click", () => {
+        showPage(pageAdminLogin);
       });
       goRegisterBtn.addEventListener("click", () => {
         showPage(pageRegister);
@@ -811,6 +1135,8 @@
         createEventSuccess.classList.remove("hidden");
         renderAttendanceLogs();
         renderHostEventsList();
+        renderEventsList();
+        renderAdminSummary();
       });
 
       // Announcement Update Handler (Host)
@@ -832,6 +1158,7 @@
         checkinError.classList.add("hidden");
         checkinSuccess.classList.add("hidden");
 
+        const action = checkinActionSelect.value;
         const codeEntered = checkinCodeInput.value.trim();
         if (!codeEntered) {
           checkinError.textContent = "Please enter the attendance code.";
@@ -840,8 +1167,8 @@
         }
 
         const file = checkinPhotoInput.files[0];
-        if (!file) {
-          checkinError.textContent = "Photo upload is required for check-in.";
+        if (!file && action === "time-in") {
+          checkinError.textContent = "Photo upload is required for time in.";
           checkinError.classList.remove("hidden");
           return;
         }
@@ -860,33 +1187,63 @@
           return;
         }
 
-        // Check if user already checked in for this event
-        const attendance = getAttendance();
-        if (attendance.some((a) => a.eventId === event.id && a.username === currentUser.username)) {
-          checkinError.textContent = "You have already checked in for this event.";
+        const existingRecord = findAttendanceRecord(event.id, currentUser.username);
+        if (action === "time-in" && existingRecord?.timeIn) {
+          checkinError.textContent = "You have already timed in for this event.";
+          checkinError.classList.remove("hidden");
+          return;
+        }
+        if (action === "time-out" && (!existingRecord || !existingRecord.timeIn)) {
+          checkinError.textContent = "You need to time in before timing out.";
+          checkinError.classList.remove("hidden");
+          return;
+        }
+        if (action === "time-out" && existingRecord?.timeOut) {
+          checkinError.textContent = "You have already timed out for this event.";
           checkinError.classList.remove("hidden");
           return;
         }
 
         // Handle photo upload (simulate storing as base64 data URL)
-        const reader = new FileReader();
-        reader.onload = function (ev) {
-          const photoDataUrl = ev.target.result;
-          addAttendanceRecord({
-            eventId: event.id,
-            username: currentUser.username,
-            timestamp: Date.now(),
-            photoDataUrl,
-          });
-          checkinSuccess.textContent = "Check-in successful!";
+        const finalizeAttendance = (photoDataUrl) => {
+          if (action === "time-in") {
+            addAttendanceRecord({
+              id: generateId(),
+              eventId: event.id,
+              username: currentUser.username,
+              timeIn: Date.now(),
+              timeOut: null,
+              photoDataUrl: photoDataUrl || null,
+            });
+            checkinSuccess.textContent = "Time in recorded!";
+          } else {
+            updateAttendanceRecord({
+              ...existingRecord,
+              timeOut: Date.now(),
+              photoDataUrl: existingRecord.photoDataUrl || photoDataUrl || null,
+            });
+            checkinSuccess.textContent = "Time out recorded!";
+          }
           checkinSuccess.classList.remove("hidden");
           checkinError.classList.add("hidden");
           checkinForm.reset();
+          renderAttendanceLogs();
+          renderAdminSummary();
+          renderAdminAttendanceLogs();
           setTimeout(() => {
             closeCheckinModal();
           }, 1500);
         };
-        reader.readAsDataURL(file);
+
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (ev) {
+            finalizeAttendance(ev.target.result);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          finalizeAttendance(null);
+        }
       });
 
       // Close checkin modal button
@@ -901,18 +1258,56 @@
         }
       });
 
+      adminLoginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        adminLoginError.classList.add("hidden");
+        const username = adminLoginForm.username.value.trim();
+        const password = adminLoginForm.password.value;
+
+        if (!username || !password) {
+          adminLoginError.textContent = "Please fill in all required fields.";
+          adminLoginError.classList.remove("hidden");
+          return;
+        }
+
+        if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+          adminLoginError.textContent = "Invalid admin credentials.";
+          adminLoginError.classList.remove("hidden");
+          return;
+        }
+
+        currentAdmin = { username };
+        currentUser = null;
+        clearSession();
+        saveAdminSession(currentAdmin);
+        adminLoginForm.reset();
+        updateNav();
+        renderAdminSummary();
+        renderAdminAttendanceLogs();
+        renderAdminUsers();
+        showPage(pageAdminDashboard);
+      });
+
       // Initialization
       function init() {
         // Load session
         const sessionUser = loadSession();
-        if (sessionUser) {
+        const sessionAdmin = loadAdminSession();
+        if (sessionAdmin) {
+          currentAdmin = sessionAdmin;
+        } else if (sessionUser) {
           currentUser = sessionUser;
         }
 
         updateNav();
         showAnnouncement();
 
-        if (currentUser) {
+        if (currentAdmin) {
+          renderAdminSummary();
+          renderAdminAttendanceLogs();
+          renderAdminUsers();
+          showPage(pageAdminDashboard);
+        } else if (currentUser) {
           if (currentUser.isHost) {
             announcementTextArea.value = getAnnouncement();
             renderAttendanceLogs();
